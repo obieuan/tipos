@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <h1 class="page-title">Gestión de Usuarios</h1>
+
+    <button class="btn btn-primary btn-large" id="create-user-btn" style="margin-bottom:1.5rem;">Crear Usuario</button>
+
+    <div id="users-list" class="users-list">
+        <p class="loading">Cargando...</p>
+    </div>
+</div>
+
+<!-- Create/Edit User Modal -->
+<div class="modal-overlay" id="user-modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title" id="user-modal-title">Crear Usuario</h2>
+            <button class="btn btn-icon modal-close" id="user-modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="edit-user-id">
+            <label class="form-label">Nombre de usuario</label>
+            <input type="text" id="user-name" class="form-input" autocomplete="off">
+
+            <div id="pin-fields">
+                <label class="form-label">PIN (4 dígitos)</label>
+                <input type="text" id="user-pin" class="form-input" inputmode="numeric" maxlength="4" pattern="[0-9]*">
+            </div>
+
+            <label class="form-label">Rol</label>
+            <select id="user-role" class="form-input">
+                <option value="user">Usuario</option>
+                <option value="admin">Administrador</option>
+            </select>
+
+            <label class="form-label">Color</label>
+            <div class="color-picker" id="color-picker"></div>
+
+            <div class="error-message" id="user-error"></div>
+            <button class="btn btn-primary btn-large" id="save-user-btn">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reset PIN Modal -->
+<div class="modal-overlay" id="pin-modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title">Resetear PIN</h2>
+            <button class="btn btn-icon modal-close" id="pin-modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="reset-pin-user-id">
+            <p id="reset-pin-username" style="font-size:1.1rem;margin-bottom:1rem;"></p>
+            <label class="form-label">Nuevo PIN (4 dígitos)</label>
+            <input type="text" id="reset-pin-value" class="form-input" inputmode="numeric" maxlength="4" pattern="[0-9]*">
+            <div class="error-message" id="pin-reset-error"></div>
+            <button class="btn btn-primary btn-large" id="reset-pin-btn">Resetear</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

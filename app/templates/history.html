@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <h1 class="page-title">Historial</h1>
+
+    <div class="tabs">
+        <button class="tab active" data-tab="daily">Por día</button>
+        <button class="tab" data-tab="monthly">General</button>
+    </div>
+
+    <div class="tab-content" id="tab-daily">
+        <label class="form-label" for="history-date">Selecciona una fecha</label>
+        <input type="date" id="history-date" class="form-input">
+    </div>
+
+    <div class="tab-content" id="tab-monthly" style="display:none;">
+        <label class="form-label" for="history-month">Selecciona un mes</label>
+        <input type="month" id="history-month" class="form-input">
+    </div>
+
+    <div class="history-list" id="history-list">
+        <p class="history-empty">Selecciona una fecha o mes para ver el historial.</p>
+    </div>
+
+    <div class="pagination" id="pagination"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const tabs = document.querySelectorAll('.tab');
+    const dailyTab = document.getElementById('tab-daily');
+    const monthlyTab = document.getElementById('tab-monthly');
+    const historyDate = document.getElementById('history-date');
+    const historyMonth = document.getElementById('history-month');
+    const historyList = document.getElementById('history-list');
+    const pagination = document.getElementById('pagination');
+
+    let currentMode = 'daily';
+    let currentQuery = '';
+
+    const today = new Date();
+    historyDate.value = today.toISOString().split('T')[0];
+    historyMonth.value = today.toISOString().slice(0, 7);
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            currentMode = tab.dataset.tab;
+            if (currentMode === 'daily') {
+                dailyTab.style.display = '';
+                monthlyTab.style.display = 'none';
+                fetchHistory('date=' + historyDate.value);
+            } else {
+                dailyTab.style.display = 'none';
+                monthlyTab.style.display = '';
+                fetchHistory('month=' + historyMonth.value);
+            }
+        });
+    });
+
+    historyDate.addEventListener('change', () => fetchHistory('date=' + historyDate.value));
+    historyMonth.addEventListener('change', () => fetchHistory('month=' + historyMonth.value));
+
+    async function fetchHistory(query, page) {
+        page = page || 1;
+        currentQuery = query;
+        try {
+            const res = await fetch('/api/history?' + query + '&page=' + page);
+            const data = await res.json();
+            renderHistory(data, query);
+        } catch {
+            historyList.innerHTML = '<p class="history-empty">Error al cargar el historial.</p>';
+        }
+    }
+
+    function renderHistory(data, query) {
+        if (!data.items || data.items.length === 0) {
+            historyList.innerHTML = '<p class="history-empty">No hay actividad en este periodo.</p>';
+            pagination.innerHTML = '';
+            return;
+        }
+
+        historyList.innerHTML = data.items.map(item => {
+            const d = new Date(item.created_at);
+            // Always show full date+time of when the action happened
+            const timeLabel = d.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+            return '<div class="history-item">' +
+                '<div class="history-text">' + item.text + '</div>' +
+                '<div class="history-time">' + timeLabel + '</div>' +
+            '</div>';
+        }).join('');
+
+        if (data.pages > 1) {
+            let html = '';
+            for (let i = 1; i <= data.pages; i++) {
+                const cls = i === data.page ? 'btn btn-small active' : 'btn btn-small';
+                html += '<button class="' + cls + '" onclick="window._fetchHistory(\'' + query + '\',' + i + ')">' + i + '</button> ';
+            }
+            pagination.innerHTML = html;
+        } else {
+            pagination.innerHTML = '';
+        }
+    }
+
+    window._fetchHistory = fetchHistory;
+
+    // Load initial data
+    fetchHistory('date=' + historyDate.value);
+})();
+</script>
+{% endblock %}

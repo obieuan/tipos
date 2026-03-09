@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <h1 class="page-title">Bloquear Días</h1>
+
+    <div class="calendar-nav">
+        <button class="btn btn-icon" id="prev-month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+                <polyline points="15,18 9,12 15,6"/>
+            </svg>
+        </button>
+        <h2 class="calendar-month-title" id="month-title"></h2>
+        <button class="btn btn-icon" id="next-month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+                <polyline points="9,6 15,12 9,18"/>
+            </svg>
+        </button>
+    </div>
+
+    <div class="calendar-weekdays">
+        <span>Lun</span><span>Mar</span><span>Mié</span>
+        <span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+    </div>
+
+    <div class="calendar-grid" id="calendar-grid"></div>
+</div>
+
+<!-- Block Day Modal -->
+<div class="modal-overlay" id="block-modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title" id="block-modal-title">Bloquear Día</h2>
+            <button class="btn btn-icon modal-close" id="block-modal-close">&times;</button>
+        </div>
+        <div class="modal-body" id="block-modal-body">
+            <p id="block-date-display" style="font-size:1.2rem;font-weight:600;margin-bottom:1rem;"></p>
+            <label class="form-label">Motivo (opcional)</label>
+            <input type="text" id="block-reason" class="form-input">
+            <div id="block-reservation-warning" class="warning-message" style="display:none;">
+                <p>Existe una reserva en este día.</p>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="cancel-existing"> Cancelar la reserva existente
+                </label>
+            </div>
+            <div class="error-message" id="block-error"></div>
+            <button class="btn btn-primary btn-large" id="confirm-block-btn">Bloquear</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+        'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+    let currentYear, currentMonth;
+    let blockedDays = [];
+    let reservations = [];
+
+    const grid = document.getElementById('calendar-grid');
+    const title = document.getElementById('month-title');
+    const overlay = document.getElementById('block-modal-overlay');
+    let selectedDate = null;
+
+    function init() {
+        const now = new Date();
+        currentYear = now.getFullYear();
+        currentMonth = now.getMonth();
+        loadMonth();
+    }
+
+    document.getElementById('prev-month').addEventListener('click', () => {
+        currentMonth--;
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+        loadMonth();
+    });
+
+    document.getElementById('next-month').addEventListener('click', () => {
+        currentMonth++;
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        loadMonth();
+    });
+
+    async function loadMonth() {
+        const monthStr = currentYear + '-' + String(currentMonth + 1).padStart(2, '0');
+        title.textContent = MONTH_NAMES[currentMonth] + ' ' + currentYear;
+
+        try {
+            const res = await fetch('/api/calendar?month=' + monthStr);
+            const data = await res.json();
+            blockedDays = data.blocked_days || [];
+            reservations = data.reservations || [];
+            renderGrid();
+        } catch {
+            grid.innerHTML = '<p>Error al cargar</p>';
+        }
+    }
+
+    function renderGrid() {
+        grid.innerHTML = '';
+        const firstDay = new Date(currentYear, currentMonth, 1);
+        let startDay = firstDay.getDay() - 1;
+        if (startDay < 0) startDay = 6;
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const today = new Date().toISOString().split('T')[0];
+
+        for (let i = 0; i < startDay; i++) {
+            const empty = document.createElement('div');
+            empty.className = 'calendar-day empty';
+            grid.appendChild(empty);
+        }
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = currentYear + '-' + String(currentMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+            const cell = document.createElement('div');
+            cell.className = 'calendar-day';
+            cell.innerHTML = '<span class="day-number">' + d + '</span>';
+
+            const blocked = blockedDays.find(b => b.date === dateStr);
+            const reservation = reservations.find(r => r.date === dateStr);
+
+            if (dateStr < today) {
+                cell.classList.add('past');
+            } else if (blocked) {
+                cell.classList.add('blocked');
+                cell.innerHTML += '<span class="day-label">Bloqueado</span>';
+                cell.addEventListener('click', () => unblockDay(blocked));
+            } else {
+                if (reservation) {
+                    cell.style.backgroundColor = reservation.owner_color + '33';
+                    cell.innerHTML += '<span class="day-label">' + reservation.owner_name + '</span>';
+                }
+                cell.addEventListener('click', () => openBlockModal(dateStr, reservation));
+            }
+
+            grid.appendChild(cell);
+        }
+    }
+
+    function openBlockModal(dateStr, reservation) {
+        selectedDate = dateStr;
+        const d = new Date(dateStr + 'T12:00:00');
+        document.getElementById('block-date-display').textContent =
+            d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        document.getElementById('block-reason').value = '';
+        document.getElementById('block-error').style.display = 'none';
+        document.getElementById('cancel-existing').checked = false;
+
+        const warning = document.getElementById('block-reservation-warning');
+        warning.style.display = reservation ? '' : 'none';
+
+        overlay.classList.add('visible');
+    }
+
+    document.getElementById('block-modal-close').addEventListener('click', () => overlay.classList.remove('visible'));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('visible'); });
+
+    document.getElementById('confirm-block-btn').addEventListener('click', async () => {
+        const errEl = document.getElementById('block-error');
+        try {
+            const res = await fetch('/api/admin/blocked-days', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date: selectedDate,
+                    reason: document.getElementById('block-reason').value.trim(),
+                    cancel_reservation: document.getElementById('cancel-existing').checked,
+                }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                overlay.classList.remove('visible');
+                loadMonth();
+            } else {
+                errEl.textContent = data.error || 'Error al bloquear';
+                errEl.style.display = 'block';
+            }
+        } catch {
+            errEl.textContent = 'Error de conexión';
+            errEl.style.display = 'block';
+        }
+    });
+
+    async function unblockDay(blocked) {
+        if (!confirm('¿Desbloquear el día ' + blocked.date + '?')) return;
+        try {
+            await fetch('/api/admin/blocked-days/' + blocked.id, { method: 'DELETE' });
+            loadMonth();
+        } catch {
+            alert('Error al desbloquear');
+        }
+    }
+
+    init();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <h1 class="page-title">Configuración</h1>
+
+    <div class="settings-form" id="settings-form">
+        <label class="form-label">Nombre del sitio</label>
+        <input type="text" id="setting-site-name" class="form-input">
+
+        <label class="form-label">Texto del disclaimer</label>
+        <textarea id="setting-disclaimer" class="form-input form-textarea" rows="4"></textarea>
+
+        <label class="form-label">Modo de reserva</label>
+        <div class="radio-group">
+            <label class="radio-label">
+                <input type="radio" name="booking_mode" value="full_day" checked> Día completo
+            </label>
+            <label class="radio-label">
+                <input type="radio" name="booking_mode" value="blocks"> Bloques (Mañana/Tarde)
+            </label>
+        </div>
+
+        <label class="form-label">Días mínimos de anticipación</label>
+        <input type="number" id="setting-min-days" class="form-input" min="0" value="0">
+
+        <label class="form-label">Días máximos hacia adelante</label>
+        <input type="number" id="setting-max-days" class="form-input" min="1" value="365">
+
+        <div class="success-message" id="settings-success" style="display:none;">Configuración guardada correctamente.</div>
+        <div class="error-message" id="settings-error"></div>
+
+        <button class="btn btn-primary btn-large" id="save-settings-btn">Guardar cambios</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const siteName = document.getElementById('setting-site-name');
+    const disclaimer = document.getElementById('setting-disclaimer');
+    const minDays = document.getElementById('setting-min-days');
+    const maxDays = document.getElementById('setting-max-days');
+    const successMsg = document.getElementById('settings-success');
+    const errorMsg = document.getElementById('settings-error');
+
+    async function loadSettings() {
+        try {
+            const res = await fetch('/api/admin/settings');
+            const data = await res.json();
+            siteName.value = data.site_name || '';
+            disclaimer.value = data.disclaimer_text || '';
+            minDays.value = data.min_days_ahead || 0;
+            maxDays.value = data.max_days_ahead || 365;
+            const mode = data.booking_mode || 'full_day';
+            document.querySelector('input[name="booking_mode"][value="' + mode + '"]').checked = true;
+        } catch {
+            errorMsg.textContent = 'Error al cargar configuración';
+            errorMsg.style.display = 'block';
+        }
+    }
+
+    document.getElementById('save-settings-btn').addEventListener('click', async () => {
+        const mode = document.querySelector('input[name="booking_mode"]:checked').value;
+        try {
+            const res = await fetch('/api/admin/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    site_name: siteName.value.trim(),
+                    disclaimer_text: disclaimer.value.trim(),
+                    booking_mode: mode,
+                    min_days_ahead: minDays.value,
+                    max_days_ahead: maxDays.value,
+                }),
+            });
+            if (res.ok) {
+                successMsg.style.display = 'block';
+                errorMsg.style.display = 'none';
+                setTimeout(() => { successMsg.style.display = 'none'; }, 3000);
+            } else {
+                const data = await res.json();
+                errorMsg.textContent = data.error || 'Error al guardar';
+                errorMsg.style.display = 'block';
+            }
+        } catch {
+            errorMsg.textContent = 'Error de conexión';
+            errorMsg.style.display = 'block';
+        }
+    });
+
+    loadSettings();
+})();
+</script>
+{% endblock %}

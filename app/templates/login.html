@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="login-container">
+    <h1 class="login-title">{{ site_name }}</h1>
+
+    <div class="login-form">
+        <label class="form-label" for="username">Nombre de usuario</label>
+        <input type="text" id="username" class="form-input" placeholder="Tu nombre" autocomplete="username" autocapitalize="off">
+
+        <label class="form-label" for="pin">PIN</label>
+        <input type="password" id="pin" class="form-input" placeholder="Tu PIN" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="current-password">
+
+        <div class="error-message" id="error-message"></div>
+
+        <button class="btn btn-primary btn-large" id="login-btn" style="margin-top:1.5rem;">Entrar</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const loginBtn = document.getElementById('login-btn');
+    const usernameInput = document.getElementById('username');
+    const pinInput = document.getElementById('pin');
+    const errorMsg = document.getElementById('error-message');
+
+    async function doLogin() {
+        const username = usernameInput.value.trim();
+        const pin = pinInput.value;
+
+        if (!username) {
+            showError('Ingresa tu nombre de usuario');
+            return;
+        }
+        if (!pin) {
+            showError('Ingresa tu PIN');
+            return;
+        }
+
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Entrando...';
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, pin }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                window.location.href = '/';
+            } else {
+                showError(data.error || 'Error al iniciar sesión');
+                pinInput.value = '';
+                pinInput.focus();
+            }
+        } catch {
+            showError('Error de conexión');
+        } finally {
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Entrar';
+        }
+    }
+
+    loginBtn.addEventListener('click', doLogin);
+
+    // Enter key submits
+    pinInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doLogin();
+    });
+    usernameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') pinInput.focus();
+    });
+
+    function showError(msg) {
+        errorMsg.textContent = msg;
+        errorMsg.style.display = 'block';
+        setTimeout(() => { errorMsg.style.display = 'none'; }, 4000);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <h1 class="page-title">{{ site_name }}</h1>
+
+    <div class="calendar-nav">
+        <button class="btn btn-icon" id="prev-month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+                <polyline points="15,18 9,12 15,6"/>
+            </svg>
+        </button>
+        <h2 class="calendar-month-title" id="month-title"></h2>
+        <button class="btn btn-icon" id="next-month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+                <polyline points="9,6 15,12 9,18"/>
+            </svg>
+        </button>
+    </div>
+
+    <div class="calendar-weekdays">
+        <span>Lun</span><span>Mar</span><span>Mié</span>
+        <span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+    </div>
+
+    <div class="calendar-grid" id="calendar-grid"></div>
+
+    <div class="calendar-legend" id="calendar-legend"></div>
+</div>
+
+<!-- Reservation Modal -->
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modal-title"></h2>
+            <button class="btn btn-icon modal-close" id="modal-close">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-body"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.CURRENT_USER = {{ current_user.to_dict() | tojson }};
+    window.DISCLAIMER_TEXT = {{ disclaimer | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/modals.js') }}"></script>
+<script src="{{ url_for('static', filename='js/calendar.js') }}"></script>
+{% endblock %}

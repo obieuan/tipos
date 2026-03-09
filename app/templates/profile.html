@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <h1 class="page-title">Mi Perfil</h1>
+
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="profile-color" style="background-color: {{ current_user.color }}"></div>
+            <div>
+                <h2 class="profile-name">{{ current_user.name }}</h2>
+                <span class="profile-role">{{ 'Administrador' if current_user.is_admin else 'Usuario' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="section-title">Mis próximas reservas</h2>
+    <div id="my-reservations" class="reservations-list">
+        <p class="loading">Cargando...</p>
+    </div>
+
+    <h2 class="section-title">Donde soy invitado</h2>
+    <div id="guest-reservations" class="reservations-list">
+        <p class="loading">Cargando...</p>
+    </div>
+
+    <div class="profile-actions">
+        <button class="btn btn-secondary btn-large" id="change-name-btn">Cambiar nombre para mostrar</button>
+        <button class="btn btn-secondary btn-large" id="change-pin-btn">Cambiar PIN</button>
+        <button class="btn btn-danger btn-large" id="logout-btn">Cerrar sesión</button>
+    </div>
+</div>
+
+<!-- Change Display Name Modal -->
+<div class="modal-overlay" id="name-modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title">Cambiar nombre para mostrar</h2>
+            <button class="btn btn-icon modal-close" id="name-modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <label class="form-label">Nombre para mostrar</label>
+            <input type="text" id="new-display-name" class="form-input" value="{{ current_user.display_name or '' }}" maxlength="100">
+            <div class="error-message" id="name-error"></div>
+            <button class="btn btn-primary btn-large" id="save-name-btn" style="margin-top:1rem;">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Change PIN Modal -->
+<div class="modal-overlay" id="pin-modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title">Cambiar PIN</h2>
+            <button class="btn btn-icon modal-close" id="pin-modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <label class="form-label">PIN actual</label>
+            <input type="password" id="current-pin" class="form-input" inputmode="numeric" maxlength="4" pattern="[0-9]*">
+            <label class="form-label">Nuevo PIN (4 dígitos)</label>
+            <input type="password" id="new-pin" class="form-input" inputmode="numeric" maxlength="4" pattern="[0-9]*">
+            <label class="form-label">Confirmar nuevo PIN</label>
+            <input type="password" id="confirm-pin" class="form-input" inputmode="numeric" maxlength="4" pattern="[0-9]*">
+            <div class="error-message" id="pin-error"></div>
+            <button class="btn btn-primary btn-large" id="save-pin-btn" style="margin-top:1rem;">Guardar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const userId = {{ current_user.id }};
+
+    // Load upcoming reservations
+    async function loadReservations() {
+        const now = new Date();
+        const months = [];
+        for (let i = 0; i < 3; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+            months.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+        }
+
+        const myList = document.getElementById('my-reservations');
+        const guestList = document.getElementById('guest-reservations');
+        const myReservations = [];
+        const guestReservations = [];
+
+        for (const month of months) {
+            try {
+                const res = await fetch('/api/reservations?month=' + month);
+                const data = await res.json();
+                const today = new Date().toISOString().split('T')[0];
+
+                data.forEach(r => {
+                    if (r.date < today) return;
+                    if (r.owner_id === userId) {
+                        myReservations.push(r);
+                    } else if (r.guests && r.guests.some(g => g.id === userId)) {
+                        guestReservations.push(r);
+                    }
+                });
+            } catch {}
+        }
+
+        myList.innerHTML = myReservations.length
+            ? myReservations.map(r => renderReservation(r, false)).join('')
+            : '<p class="empty-text">No tienes reservas próximas.</p>';
+
+        guestList.innerHTML = guestReservations.length
+            ? guestReservations.map(r => renderReservation(r, true)).join('')
+            : '<p class="empty-text">No eres invitado en ninguna reserva.</p>';
+    }
+
+    function renderReservation(r, isGuest) {
+        const d = new Date(r.date + 'T12:00:00');
+        const dateStr = d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+        const owner = isGuest ? ' — Reserva de ' + r.owner_name : '';
+        return '<div class="reservation-item">' +
+            '<div class="reservation-color" style="background-color:' + r.owner_color + '"></div>' +
+            '<div><strong>' + dateStr + '</strong>' + owner + '</div>' +
+        '</div>';
+    }
+
+    loadReservations();
+
+    // Logout
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        if (!confirm('¿Cerrar sesión?')) return;
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/login';
+    });
+
+    // --- Change Display Name ---
+    const nameOverlay = document.getElementById('name-modal-overlay');
+    document.getElementById('change-name-btn').addEventListener('click', () => {
+        document.getElementById('name-error').style.display = 'none';
+        nameOverlay.classList.add('visible');
+    });
+    document.getElementById('name-modal-close').addEventListener('click', () => nameOverlay.classList.remove('visible'));
+    nameOverlay.addEventListener('click', (e) => { if (e.target === nameOverlay) nameOverlay.classList.remove('visible'); });
+
+    document.getElementById('save-name-btn').addEventListener('click', async () => {
+        const newName = document.getElementById('new-display-name').value.trim();
+        const errEl = document.getElementById('name-error');
+
+        if (!newName) {
+            errEl.textContent = 'El nombre no puede estar vacío';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/auth/update-profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ display_name: newName }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                nameOverlay.classList.remove('visible');
+                window.location.reload();
+            } else {
+                errEl.textContent = data.error || 'Error al guardar';
+                errEl.style.display = 'block';
+            }
+        } catch {
+            errEl.textContent = 'Error de conexión';
+            errEl.style.display = 'block';
+        }
+    });
+
+    // --- Change PIN ---
+    const pinOverlay = document.getElementById('pin-modal-overlay');
+    document.getElementById('change-pin-btn').addEventListener('click', () => {
+        document.getElementById('pin-error').style.display = 'none';
+        document.getElementById('current-pin').value = '';
+        document.getElementById('new-pin').value = '';
+        document.getElementById('confirm-pin').value = '';
+        pinOverlay.classList.add('visible');
+    });
+    document.getElementById('pin-modal-close').addEventListener('click', () => pinOverlay.classList.remove('visible'));
+    pinOverlay.addEventListener('click', (e) => { if (e.target === pinOverlay) pinOverlay.classList.remove('visible'); });
+
+    document.getElementById('save-pin-btn').addEventListener('click', async () => {
+        const currentPin = document.getElementById('current-pin').value;
+        const newPin = document.getElementById('new-pin').value;
+        const confirmPin = document.getElementById('confirm-pin').value;
+        const errEl = document.getElementById('pin-error');
+
+        if (!currentPin || !newPin) {
+            errEl.textContent = 'Todos los campos son requeridos';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (newPin !== confirmPin) {
+            errEl.textContent = 'Los PINs nuevos no coinciden';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
+            errEl.textContent = 'El PIN debe ser de 4 dígitos numéricos';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/auth/change-pin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ current_pin: currentPin, new_pin: newPin }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('PIN actualizado correctamente');
+                pinOverlay.classList.remove('visible');
+            } else {
+                errEl.textContent = data.error || 'Error al cambiar PIN';
+                errEl.style.display = 'block';
+            }
+        } catch {
+            errEl.textContent = 'Error de conexión';
+            errEl.style.display = 'block';
+        }
+    });
+})();
+</script>
+{% endblock %}
