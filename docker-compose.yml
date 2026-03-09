@@ -2,6 +2,8 @@ version: '3.8'
 services:
   app:
     build: .
+    ports:
+      - "8080:5000"
     environment:
       - DATABASE_URL=postgresql://beach:${DB_PASSWORD}@db:5432/beachhouse
       - SECRET_KEY=${SECRET_KEY}
@@ -20,29 +22,5 @@ services:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
 
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-      - certbot-etc:/etc/letsencrypt
-      - certbot-var:/var/lib/letsencrypt
-      - certbot-webroot:/var/www/certbot
-    depends_on:
-      - app
-    restart: unless-stopped
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - certbot-etc:/etc/letsencrypt
-      - certbot-var:/var/lib/letsencrypt
-      - certbot-webroot:/var/www/certbot
-
 volumes:
   pgdata:
-  certbot-etc:
-  certbot-var:
-  certbot-webroot:
