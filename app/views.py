@@ -19,7 +19,9 @@ def calendar_page():
     site_name = AppSetting.get('site_name', 'Tipos Beach House')
     disclaimer = AppSetting.get('disclaimer_text',
                                 'Al reservar, acepto respetar las reglas del espacio y dejarlo en condiciones adecuadas.')
-    return render_template('calendar.html', site_name=site_name, disclaimer=disclaimer)
+    disclaimer_url = AppSetting.get('disclaimer_url', '')
+    return render_template('calendar.html', site_name=site_name, disclaimer=disclaimer,
+                           disclaimer_url=disclaimer_url)
 
 
 @views_bp.route('/historial')

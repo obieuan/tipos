@@ -41,7 +41,9 @@ function showReservationCreateModal(dateStr) {
         '<textarea id="reservation-notes" class="form-input form-textarea" rows="2" placeholder="Agrega una nota..."></textarea>' +
         '<div class="checkbox-label" style="margin:1rem 0;">' +
             '<input type="checkbox" id="disclaimer-check">' +
-            '<span>' + window.DISCLAIMER_TEXT + '</span>' +
+            '<span>' + (window.DISCLAIMER_URL
+                ? 'Al aceptar la reserva, confirmo que he leído y acepto los <a href="' + window.DISCLAIMER_URL + '" target="_blank" rel="noopener noreferrer">términos del uso del inmueble</a>.'
+                : window.DISCLAIMER_TEXT) + '</span>' +
         '</div>' +
         '<div class="error-message" id="create-error"></div>' +
         '<div class="detail-actions">' +

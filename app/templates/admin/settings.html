@@ -11,6 +11,9 @@
         <label class="form-label">Texto del disclaimer</label>
         <textarea id="setting-disclaimer" class="form-input form-textarea" rows="4"></textarea>
 
+        <label class="form-label">URL de los términos de uso</label>
+        <input type="url" id="setting-disclaimer-url" class="form-input" placeholder="https://ejemplo.com/terminos">
+
         <label class="form-label">Modo de reserva</label>
         <div class="radio-group">
             <label class="radio-label">
@@ -40,6 +43,7 @@
 (function() {
     const siteName = document.getElementById('setting-site-name');
     const disclaimer = document.getElementById('setting-disclaimer');
+    const disclaimerUrl = document.getElementById('setting-disclaimer-url');
     const minDays = document.getElementById('setting-min-days');
     const maxDays = document.getElementById('setting-max-days');
     const successMsg = document.getElementById('settings-success');
@@ -51,6 +55,7 @@
             const data = await res.json();
             siteName.value = data.site_name || '';
             disclaimer.value = data.disclaimer_text || '';
+            disclaimerUrl.value = data.disclaimer_url || '';
             minDays.value = data.min_days_ahead || 0;
             maxDays.value = data.max_days_ahead || 365;
             const mode = data.booking_mode || 'full_day';
@@ -70,6 +75,7 @@
                 body: JSON.stringify({
                     site_name: siteName.value.trim(),
                     disclaimer_text: disclaimer.value.trim(),
+                    disclaimer_url: disclaimerUrl.value.trim(),
                     booking_mode: mode,
                     min_days_ahead: minDays.value,
                     max_days_ahead: maxDays.value,

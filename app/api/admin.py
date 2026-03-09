@@ -146,7 +146,7 @@ def update_settings():
         return jsonify({'error': 'Datos inválidos'}), 400
 
     allowed_keys = {'disclaimer_text', 'booking_mode', 'min_days_ahead',
-                    'max_days_ahead', 'site_name'}
+                    'max_days_ahead', 'site_name', 'disclaimer_url'}
     for key, value in data.items():
         if key in allowed_keys:
             AppSetting.set(key, value)

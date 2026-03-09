@@ -44,6 +44,7 @@
 <script>
     window.CURRENT_USER = {{ current_user.to_dict() | tojson }};
     window.DISCLAIMER_TEXT = {{ disclaimer | tojson }};
+    window.DISCLAIMER_URL = {{ disclaimer_url | tojson }};
 </script>
 <script src="{{ url_for('static', filename='js/modals.js') }}"></script>
 <script src="{{ url_for('static', filename='js/calendar.js') }}"></script>

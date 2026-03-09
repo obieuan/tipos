@@ -19,6 +19,7 @@ def seed():
             'min_days_ahead': '0',
             'max_days_ahead': '365',
             'site_name': 'Tipos Beach House',
+            'disclaimer_url': '',
         }
         for key, value in defaults.items():
             if not db.session.get(AppSetting, key):
