@@ -3,7 +3,7 @@ services:
   app:
     build: .
     ports:
-      - "8080:5000"
+      - "5012:5000"
     environment:
       - DATABASE_URL=postgresql://beach:${DB_PASSWORD}@db:5432/beachhouse
       - SECRET_KEY=${SECRET_KEY}
